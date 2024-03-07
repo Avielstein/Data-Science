@@ -20,3 +20,10 @@ Welcome to the Data Science Repository! This repository is dedicated to showcasi
 **Description:** Employs RandomForestRegressor for predictive analysis of demographic data, with Pandas for data handling and sklearn for machine learning tasks. This project aims at uncovering insights from external demographic datasets, focusing on regression analysis to interpret and predict demographic trends.
 
 [View Project](DemographicAnalysis.ipynb)
+
+
+### 4\. Breast Cancer Wisconsin (Diagnostic) Data Analysis
+
+**Description:** This project employs machine learning to classify breast cancer diagnoses from the Breast Cancer Wisconsin (Diagnostic) Data Set. Utilizing RandomForestClassifier and Logistic Regression, it achieves high accuracy in distinguishing between benign and malignant cases. The analysis includes feature importance evaluation, providing insights into key predictors like tumor shape and size. This project underscores the potential of predictive modeling in enhancing diagnostic processes.
+
+[View Project](Breast%20Cancer%20Analysis.ipynb)
