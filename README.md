@@ -26,4 +26,7 @@ Welcome to the Data Science Repository! This repository is dedicated to showcasi
 
 **Description:** This project employs machine learning to classify breast cancer diagnoses from the Breast Cancer Wisconsin (Diagnostic) Data Set. Utilizing RandomForestClassifier and Logistic Regression, it achieves high accuracy in distinguishing between benign and malignant cases. The analysis includes feature importance evaluation, providing insights into key predictors like tumor shape and size. This project underscores the potential of predictive modeling in enhancing diagnostic processes.
 
+![Features Importance](CancerActionableInsights/features.png "Features Importance")
+
+
 [View Project](CancerActionableInsights/Breast%20Cancer%20Analysis.ipynb)
