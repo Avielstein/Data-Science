@@ -11,12 +11,12 @@ Welcome to the Data Science Repository! This repository is dedicated to showcasi
 
 ### 2. Python Stock and Age Prediction
 
-**Description:** Leveraging Python's analytical prowess, this project introduces a novel approach to predict stock market trends and age-related demographics. The analysis utilizes advanced machine learning models to forecast stock prices and demographic shifts with precision.
+**Description:** Utilizes TensorFlow and Keras for predictive modeling in stock market trends and demographic age predictions, leveraging deep learning techniques. Data manipulation and analysis are performed using Pandas and NumPy, with sklearn for additional model evaluation tasks. The project interacts with external datasets through the requests library, handling data in a robust and efficient manner.
 
 [View Project](PythonStockandAgePrediction.ipynb)
 
 ### 3. Demographic Analysis
 
-**Description:** This project embarks on a thorough analysis of demographic data. Utilizing a variety of data visualization and statistical analysis techniques, it aims to uncover insights into population trends, age distributions, and other key demographic variables.
+**Description:** Employs RandomForestRegressor for predictive analysis of demographic data, with Pandas for data handling and sklearn for machine learning tasks. This project aims at uncovering insights from external demographic datasets, focusing on regression analysis to interpret and predict demographic trends.
 
 [View Project](DemographicAnalysis.ipynb)
