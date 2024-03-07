@@ -7,7 +7,7 @@ Welcome to the Data Science Repository! This repository is dedicated to showcasi
 
 **Description:** This project provides a comprehensive framework for evaluating unsupervised clustering models, specifically focusing on K-Means and Gaussian Mixture Models (GMM). It encompasses the entire workflow from data generation to model evaluation against true labels.
 
-[View Project](UnsupervisedClusterModelEvaluation.ipynb)
+[View Project](Unsupervised%20Cluster%20Model%20Evaluation.ipynb)
 
 ### 2. Python Stock and Age Prediction
 
