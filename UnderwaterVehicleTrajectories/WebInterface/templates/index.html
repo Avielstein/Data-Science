@@ -310,6 +310,143 @@
             background: #38a169;
         }
 
+        /* Interactive Scenario Builder Styles */
+        .config-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .config-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #718096;
+        }
+
+        .config-tab:hover {
+            background-color: #f7fafc;
+        }
+
+        .config-tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+        }
+
+        .config-content {
+            display: none;
+        }
+
+        .config-content.active {
+            display: block;
+        }
+
+        .builder-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .builder-section h3 {
+            margin-bottom: 15px;
+            color: #2d3748;
+            font-size: 1.1em;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .input-row label {
+            min-width: 140px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .input-row input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .add-button {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .add-button:hover {
+            background: #38a169;
+        }
+
+        .obstacle-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .obstacle-item input[type="number"] {
+            width: 60px;
+            padding: 4px;
+            border: 1px solid #cbd5e0;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+
+        .remove-button {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .remove-button:hover {
+            background: #c53030;
+        }
+
+        .simple-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .simple-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .simple-checkbox input[type="checkbox"] {
+            transform: scale(1.1);
+        }
+
+        .simple-checkbox label {
+            font-weight: 500;
+            color: #2d3748;
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -321,6 +458,15 @@
             
             .metrics-grid {
                 grid-template-columns: 1fr 1fr;
+            }
+
+            .input-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .input-row label {
+                min-width: auto;
             }
         }
     </style>
@@ -336,23 +482,85 @@
             <div class="control-panel">
                 <h2 class="section-title">Configuration</h2>
                 
-                <div class="selection-group">
-                    <h3>Test Scenarios</h3>
-                    <div class="checkbox-grid" id="scenarios-grid">
-                        <!-- Scenarios will be loaded here -->
-                    </div>
+                <!-- Scenario Builder Tab -->
+                <div class="config-tabs">
+                    <div class="config-tab active" onclick="showConfigTab('builder')">🎯 Build Scenario</div>
+                    <div class="config-tab" onclick="showConfigTab('presets')">📋 Presets</div>
                 </div>
 
-                <div class="selection-group">
-                    <h3>Algorithms</h3>
-                    <div class="checkbox-grid" id="algorithms-grid">
-                        <!-- Algorithms will be loaded here -->
+                <!-- Interactive Scenario Builder -->
+                <div class="config-content active" id="builder-config">
+                    <div class="builder-section">
+                        <h3>Start Position & Direction</h3>
+                        <div class="input-row">
+                            <label>Position (X, Y, Z):</label>
+                            <input type="number" id="start-x" value="0" step="0.1"> 
+                            <input type="number" id="start-y" value="0" step="0.1">
+                            <input type="number" id="start-z" value="-2" step="0.1">
+                        </div>
+                        <div class="input-row">
+                            <label>Direction (X, Y, Z):</label>
+                            <input type="number" id="start-dir-x" value="1" step="0.1" min="-1" max="1">
+                            <input type="number" id="start-dir-y" value="0" step="0.1" min="-1" max="1">
+                            <input type="number" id="start-dir-z" value="0" step="0.1" min="-1" max="1">
+                        </div>
                     </div>
+
+                    <div class="builder-section">
+                        <h3>Goal Position & Direction</h3>
+                        <div class="input-row">
+                            <label>Position (X, Y, Z):</label>
+                            <input type="number" id="goal-x" value="15" step="0.1">
+                            <input type="number" id="goal-y" value="10" step="0.1">
+                            <input type="number" id="goal-z" value="-8" step="0.1">
+                        </div>
+                        <div class="input-row">
+                            <label>Direction (X, Y, Z):</label>
+                            <input type="number" id="goal-dir-x" value="1" step="0.1" min="-1" max="1">
+                            <input type="number" id="goal-dir-y" value="0" step="0.1" min="-1" max="1">
+                            <input type="number" id="goal-dir-z" value="0" step="0.1" min="-1" max="1">
+                        </div>
+                    </div>
+
+                    <div class="builder-section">
+                        <h3>Obstacles <button class="add-button" onclick="addObstacle()">+ Add</button></h3>
+                        <div id="obstacles-list">
+                            <!-- Obstacles will be added here -->
+                        </div>
+                    </div>
+
+                    <div class="builder-section">
+                        <h3>Algorithms</h3>
+                        <div class="simple-checkboxes" id="algorithms-simple">
+                            <!-- Simple algorithm checkboxes -->
+                        </div>
+                    </div>
+
+                    <button class="run-button" onclick="runCustomScenario()">
+                        🚀 Run Analysis
+                    </button>
                 </div>
 
-                <button class="run-button" id="run-button" onclick="runComparison()">
-                    🚀 Run Comparison
-                </button>
+                <!-- Preset Scenarios -->
+                <div class="config-content" id="presets-config">
+                    <div class="selection-group">
+                        <h3>Test Scenarios</h3>
+                        <div class="checkbox-grid" id="scenarios-grid">
+                            <!-- Scenarios will be loaded here -->
+                        </div>
+                    </div>
+
+                    <div class="selection-group">
+                        <h3>Algorithms</h3>
+                        <div class="checkbox-grid" id="algorithms-grid">
+                            <!-- Algorithms will be loaded here -->
+                        </div>
+                    </div>
+
+                    <button class="run-button" id="run-button" onclick="runComparison()">
+                        🚀 Run Comparison
+                    </button>
+                </div>
 
                 <div class="progress-bar" id="progress-bar" style="display: none;">
                     <div class="progress-fill" id="progress-fill"></div>
@@ -416,7 +624,181 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadScenarios();
             loadAlgorithms();
+            loadSimpleAlgorithms();
         });
+
+        // Interactive Scenario Builder Functions
+        function showConfigTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.config-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.config-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + '-config').classList.add('active');
+        }
+
+        function loadSimpleAlgorithms() {
+            const algorithms = [
+                { id: 'traditional_dubins', name: 'Traditional Dubins' },
+                { id: 'bio_inspired_dubins', name: 'Bio-Inspired Dubins' },
+                { id: 'rrt_star', name: 'RRT* Underwater' }
+            ];
+
+            const container = document.getElementById('algorithms-simple');
+            container.innerHTML = '';
+
+            algorithms.forEach(alg => {
+                const div = document.createElement('div');
+                div.className = 'simple-checkbox';
+                div.innerHTML = `
+                    <input type="checkbox" id="simple-${alg.id}" value="${alg.id}">
+                    <label for="simple-${alg.id}">${alg.name}</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addObstacle() {
+            const obstaclesList = document.getElementById('obstacles-list');
+            const obstacleCount = obstaclesList.children.length;
+            
+            const obstacleDiv = document.createElement('div');
+            obstacleDiv.className = 'obstacle-item';
+            obstacleDiv.innerHTML = `
+                <span>Obstacle ${obstacleCount + 1}:</span>
+                <label>X:</label><input type="number" class="obs-x" value="5" step="0.1">
+                <label>Y:</label><input type="number" class="obs-y" value="5" step="0.1">
+                <label>Z:</label><input type="number" class="obs-z" value="-5" step="0.1">
+                <label>R:</label><input type="number" class="obs-r" value="1.5" step="0.1" min="0.1">
+                <button class="remove-button" onclick="removeObstacle(this)">Remove</button>
+            `;
+            
+            obstaclesList.appendChild(obstacleDiv);
+        }
+
+        function removeObstacle(button) {
+            button.parentElement.remove();
+            
+            // Renumber remaining obstacles
+            const obstacles = document.querySelectorAll('.obstacle-item');
+            obstacles.forEach((obs, index) => {
+                obs.querySelector('span').textContent = `Obstacle ${index + 1}:`;
+            });
+        }
+
+        function normalizeDirection(x, y, z) {
+            const length = Math.sqrt(x*x + y*y + z*z);
+            if (length === 0) return [1, 0, 0]; // Default direction
+            return [x/length, y/length, z/length];
+        }
+
+        async function runCustomScenario() {
+            // Get start position and direction
+            const startPos = [
+                parseFloat(document.getElementById('start-x').value),
+                parseFloat(document.getElementById('start-y').value),
+                parseFloat(document.getElementById('start-z').value)
+            ];
+            
+            const startDirRaw = [
+                parseFloat(document.getElementById('start-dir-x').value),
+                parseFloat(document.getElementById('start-dir-y').value),
+                parseFloat(document.getElementById('start-dir-z').value)
+            ];
+            const startDir = normalizeDirection(...startDirRaw);
+
+            // Get goal position and direction
+            const goalPos = [
+                parseFloat(document.getElementById('goal-x').value),
+                parseFloat(document.getElementById('goal-y').value),
+                parseFloat(document.getElementById('goal-z').value)
+            ];
+            
+            const goalDirRaw = [
+                parseFloat(document.getElementById('goal-dir-x').value),
+                parseFloat(document.getElementById('goal-dir-y').value),
+                parseFloat(document.getElementById('goal-dir-z').value)
+            ];
+            const goalDir = normalizeDirection(...goalDirRaw);
+
+            // Get obstacles
+            const obstacles = [];
+            document.querySelectorAll('.obstacle-item').forEach(item => {
+                const x = parseFloat(item.querySelector('.obs-x').value);
+                const y = parseFloat(item.querySelector('.obs-y').value);
+                const z = parseFloat(item.querySelector('.obs-z').value);
+                const r = parseFloat(item.querySelector('.obs-r').value);
+                
+                obstacles.push({
+                    position: [x, y, z],
+                    radius: r,
+                    type: 'custom'
+                });
+            });
+
+            // Get selected algorithms
+            const selectedAlgorithms = Array.from(document.querySelectorAll('#algorithms-simple input:checked')).map(cb => cb.value);
+            
+            if (selectedAlgorithms.length === 0) {
+                alert('Please select at least one algorithm.');
+                return;
+            }
+
+            // Create custom scenario
+            const customScenario = {
+                name: 'Custom Scenario',
+                description: 'User-defined scenario',
+                start: startPos,
+                goal: goalPos,
+                obstacles: obstacles,
+                difficulty: 'Custom',
+                environment_type: 'Custom',
+                start_direction: startDir,
+                goal_direction: goalDir
+            };
+
+            // Send to backend
+            try {
+                const response = await fetch('/api/create_scenario', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(customScenario)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Run analysis with custom scenario
+                    const analysisResponse = await fetch('/api/run_comparison', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            scenarios: [result.scenario.id],
+                            algorithms: selectedAlgorithms,
+                            custom_scenario: customScenario
+                        })
+                    });
+
+                    if (analysisResponse.ok) {
+                        startStatusChecking();
+                    } else {
+                        const error = await analysisResponse.json();
+                        alert('Error running analysis: ' + error.error);
+                    }
+                } else {
+                    const error = await response.json();
+                    alert('Error creating scenario: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error running custom scenario');
+            }
+        }
 
         async function loadScenarios() {
             try {
