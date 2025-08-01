@@ -24,6 +24,7 @@ visualizer = TrajectoryVisualizer()
 # Global state for real-time updates
 current_results = {}
 current_scenarios = []
+custom_scenarios = []
 processing_status = {"status": "idle", "progress": 0, "message": "Ready"}
 
 @app.route('/')
@@ -42,7 +43,8 @@ def get_scenarios():
             'start': [0, 0, -2],
             'goal': [10, 8, -6],
             'obstacles': [],
-            'difficulty': 'Easy'
+            'difficulty': 'Easy',
+            'environment_type': 'Open Water'
         },
         {
             'id': 'moderate',
@@ -51,10 +53,11 @@ def get_scenarios():
             'start': [0, 0, -2],
             'goal': [15, 12, -8],
             'obstacles': [
-                {'position': [5, 4, -4], 'radius': 1.5},
-                {'position': [10, 8, -6], 'radius': 1.0}
+                {'position': [5, 4, -4], 'radius': 1.5, 'type': 'coral'},
+                {'position': [10, 8, -6], 'radius': 1.0, 'type': 'rock'}
             ],
-            'difficulty': 'Medium'
+            'difficulty': 'Medium',
+            'environment_type': 'Coral Reef'
         },
         {
             'id': 'complex',
@@ -63,15 +66,73 @@ def get_scenarios():
             'start': [0, 0, -2],
             'goal': [20, 15, -10],
             'obstacles': [
-                {'position': [5, 3, -3], 'radius': 1.2},
-                {'position': [10, 7, -5], 'radius': 1.8},
-                {'position': [15, 12, -8], 'radius': 1.0},
-                {'position': [8, 10, -7], 'radius': 1.5}
+                {'position': [5, 3, -3], 'radius': 1.2, 'type': 'coral'},
+                {'position': [10, 7, -5], 'radius': 1.8, 'type': 'rock'},
+                {'position': [15, 12, -8], 'radius': 1.0, 'type': 'coral'},
+                {'position': [8, 10, -7], 'radius': 1.5, 'type': 'kelp'}
             ],
-            'difficulty': 'Hard'
+            'difficulty': 'Hard',
+            'environment_type': 'Kelp Forest'
+        },
+        {
+            'id': 'bio_inspired',
+            'name': 'Bio-Inspired Challenge',
+            'description': 'Scenario optimized for SALP/jellyfish movement patterns',
+            'start': [0, 0, -3],
+            'goal': [25, 20, -12],
+            'obstacles': [
+                {'position': [8, 6, -5], 'radius': 2.0, 'type': 'thermal_vent'},
+                {'position': [12, 10, -7], 'radius': 1.5, 'type': 'current'},
+                {'position': [18, 15, -9], 'radius': 1.8, 'type': 'predator_zone'}
+            ],
+            'difficulty': 'Expert',
+            'environment_type': 'Deep Ocean',
+            'bio_features': {
+                'currents': True,
+                'thermal_layers': True,
+                'predator_zones': True
+            }
         }
     ]
     return jsonify(scenarios)
+
+@app.route('/api/create_scenario', methods=['POST'])
+def create_custom_scenario():
+    """Create a custom scenario."""
+    global custom_scenarios
+    
+    data = request.json
+    
+    # Validate required fields
+    required_fields = ['name', 'start', 'goal']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'Missing required field: {field}'}), 400
+    
+    # Create custom scenario
+    custom_scenario = {
+        'id': f"custom_{len(custom_scenarios) + 1}",
+        'name': data['name'],
+        'description': data.get('description', 'Custom scenario'),
+        'start': data['start'],
+        'goal': data['goal'],
+        'obstacles': data.get('obstacles', []),
+        'difficulty': data.get('difficulty', 'Custom'),
+        'environment_type': data.get('environment_type', 'Custom'),
+        'bio_features': data.get('bio_features', {})
+    }
+    
+    custom_scenarios.append(custom_scenario)
+    
+    return jsonify({
+        'message': 'Custom scenario created successfully',
+        'scenario': custom_scenario
+    })
+
+@app.route('/api/scenarios/custom')
+def get_custom_scenarios():
+    """Get custom scenarios."""
+    return jsonify(custom_scenarios)
 
 @app.route('/api/algorithms')
 def get_algorithms():

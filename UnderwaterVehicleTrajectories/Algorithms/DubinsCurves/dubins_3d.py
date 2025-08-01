@@ -207,6 +207,83 @@ class BioInspiredDubinsPlanner(Dubins3DPlanner):
     def __init__(self, min_turn_radius: float = 1.0, jet_cycle_time: float = 1.0):
         super().__init__(min_turn_radius)
         self.jet_cycle_time = jet_cycle_time
+        
+        # Enhanced SALP/Jellyfish dynamics parameters
+        self.body_length = 0.15  # meters
+        self.max_volume_ratio = 2.5  # expansion ratio
+        self.jet_efficiency = 0.65  # propulsion efficiency
+        self.recovery_time = 0.3  # time between jet cycles
+        self.contraction_speed = 0.8  # how fast body contracts (0-1)
+        
+    def salp_volume_profile(self, t: float, phase_offset: float = 0) -> float:
+        """Generate realistic SALP body volume over time"""
+        cycle_phase = (t / self.jet_cycle_time + phase_offset) % 1.0
+        
+        if cycle_phase < 0.4:  # Slow expansion phase
+            expansion_factor = np.sin(cycle_phase * np.pi / 0.4) ** 0.5
+            volume_factor = 0.5 + 0.5 * expansion_factor
+        elif cycle_phase < 0.6:  # Rapid contraction (jet phase)
+            contraction_progress = (cycle_phase - 0.4) / 0.2
+            volume_factor = 0.5 + 0.5 * (1 - contraction_progress ** 2)
+        else:  # Recovery phase
+            recovery_progress = (cycle_phase - 0.6) / 0.4
+            volume_factor = 0.5 + 0.1 * np.sin(recovery_progress * np.pi)
+            
+        return volume_factor
+    
+    def calculate_thrust_force(self, volume_rate: float, current_volume: float) -> float:
+        """Calculate thrust force based on volume change rate (realistic SALP model)"""
+        if volume_rate < -0.01:  # Only during significant contraction
+            # Thrust proportional to volume change rate and current volume
+            base_thrust = abs(volume_rate) * current_volume * 50  # N per m³/s
+            efficiency_factor = self.jet_efficiency * (1 + 0.3 * current_volume)
+            return base_thrust * efficiency_factor
+        return 0
+    
+    def jellyfish_swimming_pattern(self, path_points: np.ndarray, num_pulses: int = 8) -> np.ndarray:
+        """Apply jellyfish-like pulsing motion to trajectory"""
+        enhanced_path = []
+        
+        for i in range(len(path_points) - 1):
+            start_point = path_points[i]
+            end_point = path_points[i + 1]
+            
+            # Create pulsing motion between points
+            segment_points = []
+            for pulse in range(num_pulses):
+                t = pulse / (num_pulses - 1) if num_pulses > 1 else 0
+                
+                # Base interpolation
+                base_point = start_point + t * (end_point - start_point)
+                
+                # Add pulsing motion (perpendicular to direction)
+                direction = end_point - start_point
+                if np.linalg.norm(direction) > 0:
+                    direction = direction / np.linalg.norm(direction)
+                    
+                    # Create perpendicular vectors for pulsing
+                    if abs(direction[2]) < 0.9:
+                        perp1 = np.cross(direction, np.array([0, 0, 1]))
+                    else:
+                        perp1 = np.cross(direction, np.array([1, 0, 0]))
+                    perp1 = perp1 / np.linalg.norm(perp1)
+                    perp2 = np.cross(direction, perp1)
+                    
+                    # Pulsing amplitude based on swimming cycle
+                    pulse_phase = pulse * 2 * np.pi / num_pulses
+                    amplitude = 0.1 * self.body_length * np.sin(pulse_phase)
+                    
+                    # Add pulsing motion
+                    pulse_offset = amplitude * (perp1 * np.cos(pulse_phase) + perp2 * np.sin(pulse_phase))
+                    pulsed_point = base_point + pulse_offset
+                    
+                    segment_points.append(pulsed_point)
+                else:
+                    segment_points.append(base_point)
+            
+            enhanced_path.extend(segment_points)
+        
+        return np.array(enhanced_path)
     
     def plan_jet_propulsion_path(self, start: Configuration3D, end: Configuration3D,
                                 max_jets: int = 10) -> DubinsPath3D:
