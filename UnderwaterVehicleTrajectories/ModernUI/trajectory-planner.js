@@ -30,6 +30,8 @@ class UnderwaterTrajectoryPlanner {
         // Interaction modes
         this.currentMode = 'VIEW'; // 'VIEW' or 'EDIT'
         this.selectedWaypoint = null;
+        this.isDragging = false;
+        this.dragOffset = new THREE.Vector3();
         
         // Visual elements
         this.pathLine = null;
@@ -334,10 +336,77 @@ class UnderwaterTrajectoryPlanner {
         this.controls.mouseButton = event.button;
         this.controls.mouseX = event.clientX;
         this.controls.mouseY = event.clientY;
+        
+        // Check for waypoint dragging in EDIT mode
+        if (this.currentMode === 'EDIT' && event.button === 0) {
+            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            const waypointIntersects = this.raycaster.intersectObjects(this.waypointMarkers);
+            
+            if (waypointIntersects.length > 0) {
+                this.isDragging = true;
+                this.selectedWaypoint = waypointIntersects[0].object;
+                
+                // Calculate drag offset
+                const intersectionPoint = waypointIntersects[0].point;
+                this.dragOffset.subVectors(this.selectedWaypoint.position, intersectionPoint);
+                
+                // Highlight the waypoint being dragged
+                this.selectedWaypoint.material.emissive.setHex(0x666666);
+                
+                this.logMessage(`🖱️ Dragging waypoint ${this.waypointMarkers.indexOf(this.selectedWaypoint) + 1}`);
+                return; // Don't start camera movement
+            }
+        }
     }
     
     onMouseMove(event) {
         if (!this.controls.mouseDown) return;
+        
+        // Handle waypoint dragging in EDIT mode
+        if (this.currentMode === 'EDIT' && this.isDragging && this.selectedWaypoint) {
+            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Cast ray to find new position
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            
+            // Try intersecting with water surface first
+            const waterIntersects = this.raycaster.intersectObject(this.waterSurface);
+            let newPosition;
+            
+            if (waterIntersects.length > 0) {
+                newPosition = waterIntersects[0].point;
+                newPosition.y = Math.min(newPosition.y, 3); // Keep underwater
+            } else {
+                // Use virtual plane at depth -2
+                const virtualPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 2);
+                const ray = this.raycaster.ray;
+                newPosition = new THREE.Vector3();
+                ray.intersectPlane(virtualPlane, newPosition);
+            }
+            
+            if (newPosition) {
+                // Update waypoint position
+                this.selectedWaypoint.position.copy(newPosition);
+                
+                // Update waypoints array
+                const waypointIndex = this.waypointMarkers.indexOf(this.selectedWaypoint);
+                if (waypointIndex !== -1) {
+                    this.waypoints[waypointIndex].copy(newPosition);
+                }
+                
+                // Replan path in real-time
+                if (this.waypoints.length >= 2) {
+                    this.replanPath();
+                }
+                
+                this.updateDepthDisplay(newPosition.y);
+            }
+            return;
+        }
         
         // Only allow camera movement in VIEW mode
         if (this.currentMode !== 'VIEW') return;
@@ -362,6 +431,19 @@ class UnderwaterTrajectoryPlanner {
     
     onMouseUp(event) {
         this.controls.mouseDown = false;
+        
+        // End waypoint dragging
+        if (this.isDragging && this.selectedWaypoint) {
+            this.isDragging = false;
+            
+            // Reset waypoint highlight
+            const waypointIndex = this.waypointMarkers.indexOf(this.selectedWaypoint);
+            this.selectedWaypoint.material.emissive.setHex(
+                waypointIndex === 0 ? 0x002200 : 0x221100
+            );
+            
+            this.logMessage(`✅ Waypoint ${waypointIndex + 1} moved to (${this.selectedWaypoint.position.x.toFixed(1)}, ${this.selectedWaypoint.position.y.toFixed(1)}, ${this.selectedWaypoint.position.z.toFixed(1)})`);
+        }
     }
     
     onWheel(event) {
