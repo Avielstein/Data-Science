@@ -7,7 +7,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from bio_inspired import plan_bio_inspired_path
+from jet_swimmer import plan_bio_inspired_path
 from dubins import plan_dubins_path
 
 def create_jet_swimmer_animation():
