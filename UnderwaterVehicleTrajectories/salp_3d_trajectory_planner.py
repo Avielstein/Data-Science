@@ -395,6 +395,14 @@ class SALP3DTrajectoryPlanner:
             print("❌ Cannot visualize - no valid trajectory")
             return
         
+        # Configure matplotlib to avoid font warnings
+        import matplotlib
+        matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+        matplotlib.rcParams['figure.dpi'] = 100
+        matplotlib.rcParams['savefig.dpi'] = 300
+        import warnings
+        warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
+        
         trajectory = result['trajectory']
         
         # Create 3D plot

@@ -96,8 +96,9 @@ class SALPMissionPlanner:
             print(f"   Dive completed in {result['total_time']:.1f}s with {result['total_pulses']} pulses")
             print(f"   Path length: {result['path_length']:.1f}m")
             
-            # Save visualization
-            planner.visualize_3d_trajectory(result)
+            # Create a simple, clear visualization for this scenario
+            self.create_scenario_visualization(result, "Surface to Depth Dive", 
+                                             "Vehicle dives from surface to 10m depth while changing orientation")
             plt.savefig('salp_scenario_1_dive.png', dpi=300, bbox_inches='tight')
             plt.close()
         
@@ -385,19 +386,38 @@ class SALPMissionPlanner:
         plt.tight_layout()
     
     def visualize_search_pattern(self, results, search_area):
-        """Visualize search pattern trajectory"""
+        """Visualize search pattern trajectory with clear lawn-mower pattern"""
         
-        fig = plt.figure(figsize=(15, 10))
-        ax = fig.add_subplot(111, projection='3d')
+        # Configure matplotlib to avoid font warnings
+        import matplotlib
+        matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+        matplotlib.rcParams['figure.dpi'] = 100
+        matplotlib.rcParams['savefig.dpi'] = 300
+        import warnings
+        warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
         
-        # Plot search pattern
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # 3D trajectory plot
+        ax = fig.add_subplot(2, 2, 1, projection='3d')
+        
+        # Plot search pattern with different colors for each leg
+        colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray']
+        
         for i, result in enumerate(results):
             if result['success']:
                 traj = result['trajectory']
+                color = colors[i % len(colors)]
                 ax.plot(traj['position']['x'], 
                        traj['position']['y'], 
                        traj['position']['z'], 
-                       'b-', linewidth=1, alpha=0.7)
+                       color=color, linewidth=3, alpha=0.8, label=f'Leg {i+1}')
+                
+                # Mark start and end of each leg
+                ax.scatter(traj['position']['x'][0], traj['position']['y'][0], traj['position']['z'][0], 
+                          c=color, s=80, marker='o', edgecolors='black')
+                ax.scatter(traj['position']['x'][-1], traj['position']['y'][-1], traj['position']['z'][-1], 
+                          c=color, s=80, marker='s', edgecolors='black')
         
         # Show search area boundaries
         x_bounds = [search_area['x_min'], search_area['x_max']]
@@ -414,14 +434,106 @@ class SALPMissionPlanner:
         ]
         
         corners = np.array(corners)
-        ax.plot(corners[:, 0], corners[:, 1], corners[:, 2], 'r--', linewidth=2, label='Search Area')
+        ax.plot(corners[:, 0], corners[:, 1], corners[:, 2], 'r--', linewidth=3, label='Search Area')
         
-        ax.set_xlabel('X (m)')
-        ax.set_ylabel('Y (m)')
-        ax.set_zlabel('Z (m)')
-        ax.legend()
-        ax.set_title('SALP Search Pattern')
+        ax.set_xlabel('X Position (m)')
+        ax.set_ylabel('Y Position (m)')
+        ax.set_zlabel('Z Depth (m)')
+        ax.set_title('3D Search Pattern\n(Lawn-Mower Pattern)', fontweight='bold')
         
+        # Top-down view
+        ax = axes[0, 1]
+        
+        for i, result in enumerate(results):
+            if result['success']:
+                traj = result['trajectory']
+                color = colors[i % len(colors)]
+                ax.plot(traj['position']['x'], traj['position']['y'], 
+                       color=color, linewidth=3, alpha=0.8, label=f'Leg {i+1}')
+                
+                # Add arrows to show direction
+                if len(traj['position']['x']) > 10:
+                    mid_idx = len(traj['position']['x']) // 2
+                    dx = traj['position']['x'][mid_idx+1] - traj['position']['x'][mid_idx-1]
+                    dy = traj['position']['y'][mid_idx+1] - traj['position']['y'][mid_idx-1]
+                    ax.arrow(traj['position']['x'][mid_idx], traj['position']['y'][mid_idx],
+                            dx*0.5, dy*0.5, head_width=0.3, head_length=0.2, 
+                            fc=color, ec=color, alpha=0.7)
+        
+        # Draw search area
+        rect_x = [x_bounds[0], x_bounds[1], x_bounds[1], x_bounds[0], x_bounds[0]]
+        rect_y = [y_bounds[0], y_bounds[0], y_bounds[1], y_bounds[1], y_bounds[0]]
+        ax.plot(rect_x, rect_y, 'r--', linewidth=3, label='Search Area')
+        
+        ax.set_xlabel('X Position (m)')
+        ax.set_ylabel('Y Position (m)')
+        ax.set_title('Top-Down View\n(Shows Lawn-Mower Pattern)', fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.set_aspect('equal')
+        
+        # Search progress over time
+        ax = axes[1, 0]
+        
+        total_time = 0
+        cumulative_time = [0]
+        cumulative_distance = [0]
+        
+        for result in results:
+            if result['success']:
+                total_time += result['total_time']
+                cumulative_time.append(total_time)
+                cumulative_distance.append(cumulative_distance[-1] + result['path_length'])
+        
+        ax.plot(cumulative_time, cumulative_distance, 'g-', linewidth=3, marker='o', markersize=6)
+        ax.grid(True, alpha=0.3)
+        ax.set_title('Search Progress\n(Distance Covered vs Time)', fontweight='bold')
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Cumulative Distance (m)')
+        
+        # Mission summary
+        ax = axes[1, 1]
+        ax.axis('off')
+        
+        total_segments = len([r for r in results if r['success']])
+        total_time = sum(r['total_time'] for r in results if r['success'])
+        total_distance = sum(r['path_length'] for r in results if r['success'])
+        total_pulses = sum(r['total_pulses'] for r in results if r['success'])
+        
+        search_area_size = (search_area['x_max'] - search_area['x_min']) * (search_area['y_max'] - search_area['y_min'])
+        coverage_efficiency = total_distance / search_area_size if search_area_size > 0 else 0
+        
+        info_text = f"""
+SEARCH PATTERN MISSION
+
+PATTERN: Lawn-Mower Search
+AREA: {search_area['x_max']-search_area['x_min']}m × {search_area['y_max']-search_area['y_min']}m
+DEPTH: {abs(search_area['depth'])}m
+SPACING: {search_area['spacing']}m
+
+PERFORMANCE:
+• Search Legs: {total_segments}
+• Total Time: {total_time:.1f}s
+• Total Distance: {total_distance:.1f}m
+• Total Pulses: {total_pulses}
+• Avg Speed: {total_distance/total_time:.1f}m/s
+• Coverage Efficiency: {coverage_efficiency:.2f}
+
+PATTERN EXPLANATION:
+The robot follows a systematic
+"lawn-mower" pattern to ensure
+complete coverage of the search
+area. Each colored line shows
+one leg of the search pattern.
+
+STATUS: SUCCESS ✓
+        """
+        
+        ax.text(0.05, 0.95, info_text, transform=ax.transAxes, fontsize=10,
+                verticalalignment='top', fontfamily='monospace',
+                bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.8))
+        
+        plt.suptitle('SALP Search Pattern Mission - Systematic Area Coverage', 
+                    fontsize=14, fontweight='bold')
         plt.tight_layout()
     
     def visualize_survey_mission(self, results, sampling_points):
@@ -494,8 +606,115 @@ class SALPMissionPlanner:
         
         plt.tight_layout()
     
+    def create_scenario_visualization(self, result, title, description):
+        """Create a clear visualization for individual scenarios"""
+        
+        # Configure matplotlib to avoid font warnings
+        import matplotlib
+        matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+        matplotlib.rcParams['figure.dpi'] = 100
+        matplotlib.rcParams['savefig.dpi'] = 300
+        import warnings
+        warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
+        
+        trajectory = result['trajectory']
+        
+        # Create a simple 2x2 plot layout
+        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        
+        # 3D trajectory plot
+        ax = axes[0, 0]
+        ax = fig.add_subplot(2, 2, 1, projection='3d')
+        
+        # Plot trajectory
+        ax.plot(trajectory['position']['x'], 
+                trajectory['position']['y'], 
+                trajectory['position']['z'], 
+                'b-', linewidth=3, label='Trajectory', alpha=0.8)
+        
+        # Mark start and end
+        ax.scatter(trajectory['position']['x'][0], 
+                   trajectory['position']['y'][0], 
+                   trajectory['position']['z'][0], 
+                   c='green', s=150, label='Start', marker='o', edgecolors='black')
+        ax.scatter(trajectory['position']['x'][-1], 
+                   trajectory['position']['y'][-1], 
+                   trajectory['position']['z'][-1], 
+                   c='red', s=150, label='Goal', marker='s', edgecolors='black')
+        
+        # Mark jet pulses
+        pulse_indices = [i for i, active in enumerate(trajectory['active_pulse']) if active]
+        if pulse_indices:
+            sample_indices = pulse_indices[::5]  # Every 5th pulse
+            pulse_x = [trajectory['position']['x'][i] for i in sample_indices]
+            pulse_y = [trajectory['position']['y'][i] for i in sample_indices]
+            pulse_z = [trajectory['position']['z'][i] for i in sample_indices]
+            ax.scatter(pulse_x, pulse_y, pulse_z, c='orange', s=40, alpha=0.7, 
+                       marker='^', label='Jet Pulses')
+        
+        ax.set_xlabel('X (m)')
+        ax.set_ylabel('Y (m)')
+        ax.set_zlabel('Z (m)')
+        ax.legend()
+        ax.set_title('3D Trajectory Path')
+        
+        # Velocity over time
+        ax = axes[0, 1]
+        total_speed = [math.sqrt(vx**2 + vy**2 + vz**2) for vx, vy, vz in 
+                       zip(trajectory['velocity']['x'], trajectory['velocity']['y'], trajectory['velocity']['z'])]
+        ax.plot(trajectory['time'], total_speed, 'g-', linewidth=2, label='Speed')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+        ax.set_title('Vehicle Speed')
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Speed (m/s)')
+        
+        # Jet pulse timing
+        ax = axes[1, 0]
+        pulse_indicator = [1 if active else 0 for active in trajectory['active_pulse']]
+        ax.plot(trajectory['time'], pulse_indicator, 'orange', linewidth=3)
+        ax.fill_between(trajectory['time'], pulse_indicator, alpha=0.3, color='orange')
+        ax.grid(True, alpha=0.3)
+        ax.set_title('Jet Pulse Activity')
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Pulse Active')
+        ax.set_ylim(-0.1, 1.1)
+        
+        # Mission summary
+        ax = axes[1, 1]
+        ax.axis('off')
+        
+        # Add mission information
+        info_text = f"""
+MISSION: {title}
+
+{description}
+
+PERFORMANCE:
+• Total Time: {result['total_time']:.1f}s
+• Total Pulses: {result['total_pulses']}
+• Path Length: {result['path_length']:.1f}m
+• Average Speed: {result['path_length']/result['total_time']:.1f}m/s
+• Max Speed: {max(total_speed):.1f}m/s
+
+STATUS: SUCCESS ✓
+        """
+        
+        ax.text(0.1, 0.9, info_text, transform=ax.transAxes, fontsize=10,
+                verticalalignment='top', fontfamily='monospace',
+                bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
+        
+        plt.suptitle(f'SALP Mission: {title}', fontsize=14, fontweight='bold')
+        plt.tight_layout()
+    
     def create_summary_visualization(self, results):
         """Create summary visualization of all scenarios"""
+        
+        # Configure matplotlib to avoid font warnings
+        import matplotlib
+        matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+        import warnings
+        warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
         
         fig, axes = plt.subplots(2, 3, figsize=(18, 12))
         axes = axes.flatten()
@@ -527,25 +746,27 @@ class SALPMissionPlanner:
                 values = [total_time, total_pulses, total_distance]
                 
                 bars = ax.bar(metrics, values, color=['blue', 'orange', 'green'])
-                ax.set_title(f'{scenario_names[i]}\n✅ Success')
+                ax.set_title(f'{scenario_names[i]}\nSUCCESS', fontweight='bold', color='green')
                 ax.set_ylabel('Value')
+                ax.grid(True, alpha=0.3)
                 
                 # Add value labels on bars
                 for bar, value in zip(bars, values):
                     height = bar.get_height()
                     ax.text(bar.get_x() + bar.get_width()/2., height,
-                           f'{value:.1f}', ha='center', va='bottom')
+                           f'{value:.1f}', ha='center', va='bottom', fontweight='bold')
             else:
-                ax.text(0.5, 0.5, f'{scenario_names[i]}\n❌ Failed', 
+                ax.text(0.5, 0.5, f'{scenario_names[i]}\nFAILED', 
                        ha='center', va='center', transform=ax.transAxes,
-                       fontsize=14, color='red')
+                       fontsize=14, color='red', fontweight='bold')
                 ax.set_xlim(0, 1)
                 ax.set_ylim(0, 1)
                 ax.axis('off')
         
+        plt.suptitle('SALP Mission Scenarios Performance Summary', fontsize=16, fontweight='bold')
         plt.tight_layout()
         plt.savefig('salp_scenarios_summary.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        plt.close()  # Close to prevent display issues
 
 def main():
     """Run all SALP demonstration scenarios"""

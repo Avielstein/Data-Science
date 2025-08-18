@@ -358,67 +358,132 @@ class TrajectoryVisualizer:
     """Clean trajectory visualization"""
     
     @staticmethod
-    def plot(trajectory, initial_state, final_state, title="Optimal Trajectory"):
-        """Plot trajectory results"""
+    def plot(trajectory, initial_state, final_state, title="Optimal Control Trajectory"):
+        """Plot trajectory results with intuitive explanations"""
         
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        # Configure matplotlib to avoid font warnings
+        import matplotlib
+        matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+        matplotlib.rcParams['figure.dpi'] = 100
+        matplotlib.rcParams['savefig.dpi'] = 300
+        import warnings
+        warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
         
-        # Position trajectory
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # Calculate some key metrics for explanations
+        total_time = trajectory['time'][-1]
+        total_distance = math.sqrt((final_state[0] - initial_state[0])**2 + (final_state[1] - initial_state[1])**2)
+        max_speed = max([math.sqrt(vx**2 + vy**2) for vx, vy in zip(trajectory['velocity']['x'], trajectory['velocity']['y'])])
+        
+        # 1. THE JOURNEY: Show the path like a GPS route
         ax = axes[0, 0]
         ax.plot(trajectory['position']['x'], trajectory['position']['y'], 
-                'b-', linewidth=2, label='Trajectory')
-        ax.plot(initial_state[0], initial_state[1], 'go', markersize=10, label='Start')
-        ax.plot(final_state[0], final_state[1], 'ro', markersize=10, label='Goal')
+                'b-', linewidth=4, label='Vehicle Path', alpha=0.8)
+        ax.plot(initial_state[0], initial_state[1], 'go', markersize=15, 
+                label='START', markeredgecolor='darkgreen', markeredgewidth=2)
+        ax.plot(final_state[0], final_state[1], 'ro', markersize=15, 
+                label='DESTINATION', markeredgecolor='darkred', markeredgewidth=2)
         
-        # Add velocity arrows
-        skip = len(trajectory['time']) // 15
-        ax.quiver(trajectory['position']['x'][::skip], 
-                 trajectory['position']['y'][::skip],
-                 trajectory['velocity']['x'][::skip], 
-                 trajectory['velocity']['y'][::skip],
-                 units='width', alpha=0.7)
+        # Add some waypoint markers to show progress
+        n_points = len(trajectory['position']['x'])
+        waypoints = [n_points//4, n_points//2, 3*n_points//4]
+        for i, wp in enumerate(waypoints):
+            if wp < n_points:
+                ax.plot(trajectory['position']['x'][wp], trajectory['position']['y'][wp], 
+                       'yo', markersize=8, alpha=0.7)
         
         ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
-        ax.legend()
-        ax.set_title('Position Trajectory')
-        ax.set_xlabel('X (m)')
-        ax.set_ylabel('Y (m)')
+        ax.legend(fontsize=12, loc='best')
+        ax.set_title(f'THE JOURNEY\nOptimal path from start to destination\n'
+                    f'Distance: {total_distance:.1f}m in {total_time:.1f}s', 
+                    fontweight='bold', fontsize=12)
+        ax.set_xlabel('East-West Position (meters)', fontsize=11)
+        ax.set_ylabel('North-South Position (meters)', fontsize=11)
         
-        # Control inputs
+        # 2. THE STEERING: Show how we control the vehicle
         ax = axes[0, 1]
-        ax.plot(trajectory['time'], trajectory['control']['x'], 'r-', linewidth=2, label='ux')
-        ax.plot(trajectory['time'], trajectory['control']['y'], 'b-', linewidth=2, label='uy')
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-        ax.set_title('Control Inputs')
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Acceleration (m/s²)')
+        control_magnitude = [math.sqrt(ux**2 + uy**2) for ux, uy in zip(trajectory['control']['x'], trajectory['control']['y'])]
         
-        # Velocity profiles
+        ax.fill_between(trajectory['time'], 0, control_magnitude, 
+                       alpha=0.6, color='orange', label='Thruster Power')
+        ax.plot(trajectory['time'], control_magnitude, 'r-', linewidth=2, label='Total Thrust')
+        
+        # Show when we're accelerating vs coasting
+        max_thrust = max(control_magnitude) if control_magnitude else 1
+        ax.axhline(max_thrust * 0.1, color='green', linestyle='--', alpha=0.7, label='Low Power')
+        ax.axhline(max_thrust * 0.8, color='red', linestyle='--', alpha=0.7, label='High Power')
+        
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=10)
+        ax.set_title('THE STEERING\nHow much thruster power we need\n'
+                    f'(Like pressing the gas pedal)', fontweight='bold', fontsize=12)
+        ax.set_xlabel('Time (seconds)', fontsize=11)
+        ax.set_ylabel('Thruster Power (m/s²)', fontsize=11)
+        
+        # 3. THE SPEED: Show how fast we're going
         ax = axes[1, 0]
-        ax.plot(trajectory['time'], trajectory['velocity']['x'], 'r-', linewidth=2, label='vx')
-        ax.plot(trajectory['time'], trajectory['velocity']['y'], 'b-', linewidth=2, label='vy')
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-        ax.set_title('Velocity Profiles')
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Velocity (m/s)')
+        total_speed = [math.sqrt(vx**2 + vy**2) for vx, vy in zip(trajectory['velocity']['x'], trajectory['velocity']['y'])]
         
-        # Position components
+        ax.fill_between(trajectory['time'], 0, total_speed, alpha=0.4, color='lightblue')
+        ax.plot(trajectory['time'], total_speed, 'b-', linewidth=3, label='Vehicle Speed')
+        
+        # Add speed phases
+        if len(total_speed) > 10:
+            mid_point = len(total_speed) // 2
+            ax.annotate('Speeding Up', xy=(trajectory['time'][mid_point//2], total_speed[mid_point//2]), 
+                       xytext=(10, 10), textcoords='offset points', fontsize=10,
+                       bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgreen', alpha=0.7))
+            ax.annotate('Slowing Down', xy=(trajectory['time'][-mid_point//2], total_speed[-mid_point//2]), 
+                       xytext=(10, 10), textcoords='offset points', fontsize=10,
+                       bbox=dict(boxstyle='round,pad=0.3', facecolor='lightcoral', alpha=0.7))
+        
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=10)
+        ax.set_title(f'THE SPEED\nHow fast we move (max: {max_speed:.1f} m/s)\n'
+                    f'(Like a car speedometer)', fontweight='bold', fontsize=12)
+        ax.set_xlabel('Time (seconds)', fontsize=11)
+        ax.set_ylabel('Speed (m/s)', fontsize=11)
+        
+        # 4. THE PROGRESS: Show how we reach our destination
         ax = axes[1, 1]
-        ax.plot(trajectory['time'], trajectory['position']['x'], 'r-', linewidth=2, label='x')
-        ax.plot(trajectory['time'], trajectory['position']['y'], 'b-', linewidth=2, label='y')
-        ax.axhline(final_state[0], color='red', linestyle='--', alpha=0.5)
-        ax.axhline(final_state[1], color='blue', linestyle='--', alpha=0.5)
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-        ax.set_title('Position Components')
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Position (m)')
         
-        plt.suptitle(title)
+        # Calculate distance to target over time
+        distance_to_target = []
+        for i in range(len(trajectory['position']['x'])):
+            dist = math.sqrt((trajectory['position']['x'][i] - final_state[0])**2 + 
+                           (trajectory['position']['y'][i] - final_state[1])**2)
+            distance_to_target.append(dist)
+        
+        ax.fill_between(trajectory['time'], 0, distance_to_target, alpha=0.4, color='lightcoral')
+        ax.plot(trajectory['time'], distance_to_target, 'r-', linewidth=3, label='Distance to Target')
+        ax.axhline(0, color='green', linestyle='-', linewidth=2, alpha=0.8, label='TARGET REACHED!')
+        
+        # Add progress markers
+        progress_25 = total_distance * 0.75
+        progress_50 = total_distance * 0.5
+        progress_75 = total_distance * 0.25
+        
+        ax.axhline(progress_75, color='orange', linestyle='--', alpha=0.6, label='75% Complete')
+        ax.axhline(progress_50, color='yellow', linestyle='--', alpha=0.6, label='50% Complete')
+        ax.axhline(progress_25, color='lightgreen', linestyle='--', alpha=0.6, label='25% Complete')
+        
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=10)
+        ax.set_title('THE PROGRESS\nHow close we are to the destination\n'
+                    f'(Like GPS: "You have arrived!")', fontweight='bold', fontsize=12)
+        ax.set_xlabel('Time (seconds)', fontsize=11)
+        ax.set_ylabel('Distance to Target (meters)', fontsize=11)
+        
+        # Main title with simple explanation
+        fig.suptitle('OPTIMAL CONTROL EXPLAINED\n'
+                    'This shows the SMARTEST way for an underwater robot to move from point A to point B\n'
+                    f'(Think of it like the best GPS route, but for a submarine!)', 
+                    fontsize=16, fontweight='bold', y=0.98)
+        
         plt.tight_layout()
+        plt.subplots_adjust(top=0.90)
         return fig
 
 def test_optimal_control():
